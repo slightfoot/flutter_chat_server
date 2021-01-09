@@ -1,0 +1,15 @@
+name: client
+description: Chat Client
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.12.0-0.0 <3.0.0"
+
+dependencies:
+  timeago: ^2.0.29
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

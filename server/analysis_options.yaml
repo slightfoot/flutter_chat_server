@@ -1,0 +1,11 @@
+# see https://github.com/dart-lang/pedantic#enabled-lints.
+include: package:pedantic/analysis_options.yaml
+
+analyzer:
+  errors:
+    import_of_legacy_library_into_null_safe: false
+  exclude:
+    - bin/**
+
+linter:
+ rules:

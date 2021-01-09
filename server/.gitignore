@@ -1,0 +1,4 @@
+#public/
+#!public/.gitkeep
+.dart_tool/
+.idea/

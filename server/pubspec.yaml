@@ -1,0 +1,23 @@
+name: server
+description: Chat Server
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=2.12.0-0.0 <3.0.0'
+
+dependencies:
+  meta: 1.3.0-nullsafety.6
+  path: ^1.8.0-nullsafety.3
+  charcode: 1.2.0-nullsafety.3
+  http: ^0.12.2
+  shelf: ^0.7.9
+  shelf_static: ^0.2.9+1
+  shelf_web_socket: ^0.2.3
+  web_socket_channel: ^1.1.0
+  functions_framework: ^0.3.1
+
+dev_dependencies:
+  pedantic: ^1.9.2
+  build_runner: ^1.10.12
+  functions_framework_builder: ^0.3.1
