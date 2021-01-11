@@ -21,6 +21,7 @@ COPY --from=dart /app/public /app/public
 COPY --from=dart /usr/bin/busybox /bin/busybox
 COPY --from=dart /usr/bin/busybox /bin/sh
 RUN /bin/busybox --install -s /bin
+RUN rm /bin/sh && ln -s /bin/busybox /bin/sh
 
 EXPOSE 8080
 ENTRYPOINT ["/app/bin/server"]
