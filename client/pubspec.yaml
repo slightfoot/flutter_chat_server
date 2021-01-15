@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   timeago: ^2.0.29
+  crypto: ^3.0.0-nullsafety
   flutter:
     sdk: flutter
 

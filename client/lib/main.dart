@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert' show json;
-import 'dart:html';
+import 'dart:io';
 
+import 'package:client/web_socket.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -33,75 +34,112 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   final _messages = <ChatMessage>[];
   late TextEditingController _messageController;
-  late WebSocket _socket;
-  late StreamSubscription _sub;
+  late FocusNode _messageFocus;
+  WebSocket? _socket;
+  StreamSubscription? _sub;
 
   @override
   void initState() {
     super.initState();
     _messageController = TextEditingController();
-    final schema = window.location.protocol == 'http:' ? 'ws' : 'wss';
-    _socket = WebSocket('$schema://${window.location.host}/chat', ['chat']);
-    _sub = _socket.onMessage.listen(_onMessageReceived);
+    _messageFocus = FocusNode();
+    _connect().catchError((error, stackTrace) {
+      print('Socket connect failed: $error\n$stackTrace');
+    });
+  }
+
+  Future<void> _connect() async {
+    // ignore: close_sinks
+    _socket = await webSocketConnect('ws://localhost/chat', protocols: ['chat']);
+    if (_socket!.readyState != WebSocket.open) {
+      print('socket not ready');
+      return;
+    }
+    _socket!.add('mobile connected');
+    _sub = _socket!.listen(
+      _onMessageReceived,
+      onError: (error, stackTrace) {
+        print('Socket error: $error\n$stackTrace');
+      },
+      onDone: () {
+        print('Socket closed: ${_socket?.closeCode}: ${_socket?.closeReason}');
+      },
+    );
   }
 
   @override
   void dispose() {
-    _sub.cancel();
-    _socket.close();
+    _sub?.cancel();
+    _socket?.close();
+    _messageFocus.dispose();
     _messageController.dispose();
     super.dispose();
   }
 
-  void _onMessageReceived(MessageEvent event) {
+  void _onMessageReceived(dynamic event) {
     setState(() {
-      _messages.insert(0, ChatMessage.fromJson(json.decode(event.data as String)));
+      _messages.insert(0, ChatMessage.fromJson(json.decode(event as String)));
     });
   }
 
   void _onSendPressed() {
-    _socket.send(_messageController.text);
+    if (_socket == null) return;
+    final text = _messageController.text;
+    _socket!.add(text);
+    setState(() {
+      _messages.insert(0, ChatMessage.local(text));
+    });
     _messageController.value = TextEditingValue.empty;
+    _messageFocus.requestFocus();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView.builder(
-        reverse: true,
-        itemCount: _messages.length,
-        itemBuilder: (BuildContext context, int index) {
-          final message = _messages[index];
-          return ListTile(
-            title: Text(message.content),
-            subtitle: Text('Sent by ${message.sender}, ${message.sentAgo}'),
-          );
-        },
-      ),
-      bottomNavigationBar: Material(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter Message',
-                    ),
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _onSendPressed(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                reverse: true,
+                itemCount: _messages.length,
+                itemBuilder: (BuildContext context, int index) {
+                  final message = _messages[index];
+                  return ListTile(
+                    title: Text(message.content),
+                    subtitle: Text('Sent by ${message.sender}, ${message.sentAgo}'),
+                  );
+                },
+              ),
+            ),
+            BottomAppBar(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          focusNode: _messageFocus,
+                          decoration: InputDecoration(
+                            hintText: 'Enter Message',
+                          ),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _onSendPressed(),
+                        ),
+                      ),
+                      FlatButton(
+                        onPressed: _onSendPressed,
+                        child: Icon(Icons.send),
+                      ),
+                    ],
                   ),
                 ),
-                FlatButton(
-                  onPressed: _onSendPressed,
-                  child: Icon(Icons.send),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -121,6 +159,15 @@ class ChatMessage {
     required this.type,
     required this.content,
   });
+
+  static ChatMessage local(String content) {
+    return ChatMessage(
+      sender: -1,
+      sent: DateTime.now(),
+      type: MessageType.message,
+      content: content,
+    );
+  }
 
   static ChatMessage fromJson(Map<String, dynamic> json) {
     return ChatMessage(
